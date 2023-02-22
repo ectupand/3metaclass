@@ -1,8 +1,9 @@
 from typing import Optional, TYPE_CHECKING
-from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from app.store.database import db
+from consts import DATABASE_URL
 
 if TYPE_CHECKING:
     from app.web.app import Application
@@ -17,8 +18,9 @@ class Database:
 
     async def connect(self, *_: list, **__: dict) -> None:
         self._db = db
-        # self._engine = create_async_engine()
-        # self.session = sessionmaker()
+        self._engine = create_async_engine(DATABASE_URL, echo=True, future=True)
+        self.session = sessionmaker(self._engine, class_=AsyncSession, expire_on_commit=False)
 
     async def disconnect(self, *_: list, **__: dict) -> None:
-        raise NotImplemented
+        if self._engine:
+            await self._engine.dispose()

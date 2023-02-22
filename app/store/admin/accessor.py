@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import typing
+from hashlib import sha256
 
 from sqlalchemy import select
 
@@ -11,7 +14,18 @@ if typing.TYPE_CHECKING:
 
 class AdminAccessor(BaseAccessor):
     async def get_by_email(self, email: str) -> Admin | None:
-        raise NotImplemented
+        async with self.app.database.session.begin() as sess:
+            q = select(AdminModel).where(AdminModel.email == email)
+            result = await sess.execute(q)
+            admin = result.scalars().first()
+            if admin:
+                return admin.to_data()
 
     async def create_admin(self, email: str, password: str) -> Admin:
-        raise NotImplemented
+        async with self.app.database.session.begin() as sess:
+            admin = AdminModel(
+                email=email,
+                password=sha256(password.encode()).hexdigest())
+            sess.add(admin)
+            await sess.commit()
+            return admin.to_data()
